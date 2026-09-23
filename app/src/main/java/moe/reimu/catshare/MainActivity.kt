@@ -89,13 +89,11 @@ import moe.reimu.catshare.ui.theme.CatShareTheme
 import moe.reimu.catshare.utils.INTERNAL_BROADCAST_PERMISSION
 import moe.reimu.catshare.utils.ServiceState
 import moe.reimu.catshare.utils.registerInternalBroadcastReceiver
-import org.uwuaosp.compose.settingslib.PreferenceGroupSpacer
-import org.uwuaosp.compose.settingslib.PreferencePosition
 import org.uwuaosp.compose.settingslib.PreferenceRow
-import org.uwuaosp.compose.settingslib.SettingsCategory
 import org.uwuaosp.compose.settingslib.SettingsHomepageIcon
 import org.uwuaosp.compose.settingslib.SettingsScaffold
 import org.uwuaosp.compose.settingslib.SettingsToolbarActionButton
+import org.uwuaosp.compose.settingslib.SettingsSection
 import org.uwuaosp.compose.settingslib.SwitchPreferenceRow
 import kotlin.random.Random
 
@@ -350,33 +348,35 @@ fun MainActivityContent() {
                     Spacer(modifier = Modifier.height(2.dp))
                 }
             }
-            SettingsCategory(title = stringResource(R.string.catshare_category_transfer))
-            SwitchPreferenceRow(
-                title = stringResource(R.string.discoverable),
-                summary = stringResource(R.string.discoverable_desc),
-                checked = checked,
-                iconContent = {
-                    SettingsHomepageIcon(iconRes = R.drawable.ic_feature_search)
-                },
-                onCheckedChange = {
-                    if (it) {
-                        GattServerService.start(context)
-                    } else {
-                        GattServerService.stop(context)
-                    }
-                },
-                position = PreferencePosition.Top,
-            )
-            PreferenceGroupSpacer()
-            PreferenceRow(
-                title = stringResource(R.string.send),
-                summary = stringResource(R.string.send_desc),
-                iconContent = {
-                    SettingsHomepageIcon(imageVector = Icons.Filled.Share)
-                },
-                onClick = { pickFilesLauncher.launch(arrayOf("*/*")) },
-                position = PreferencePosition.Bottom,
-            )
+            SettingsSection(title = stringResource(R.string.catshare_category_transfer)) {
+                item {
+                    SwitchPreferenceRow(
+                        title = stringResource(R.string.discoverable),
+                        summary = stringResource(R.string.discoverable_desc),
+                        checked = checked,
+                        iconContent = {
+                            SettingsHomepageIcon(iconRes = R.drawable.ic_feature_search)
+                        },
+                        onCheckedChange = {
+                            if (it) {
+                                GattServerService.start(context)
+                            } else {
+                                GattServerService.stop(context)
+                            }
+                        },
+                    )
+                }
+                item {
+                    PreferenceRow(
+                        title = stringResource(R.string.send),
+                        summary = stringResource(R.string.send_desc),
+                        iconContent = {
+                            SettingsHomepageIcon(imageVector = Icons.Filled.Share)
+                        },
+                        onClick = { pickFilesLauncher.launch(arrayOf("*/*")) },
+                    )
+                }
+            }
         }
         DevicePickerSheet(
             visible = pendingSendFiles.isNotEmpty(),
