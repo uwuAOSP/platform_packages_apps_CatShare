@@ -17,6 +17,7 @@ android {
         getByName("main") {
             manifest.srcFile("../../../../../uwu-sdk/uwuCompose/AndroidManifest.xml")
             kotlin.setSrcDirs(listOf("../../../../../uwu-sdk/uwuCompose/src"))
+            res.setSrcDirs(listOf("../../../../../uwu-sdk/uwuCompose/res"))
         }
     }
 
@@ -42,7 +43,8 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.foundation:foundation")
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.material3)
+    implementation("androidx.compose.material3:material3:1.5.0-alpha16")
+    implementation("androidx.compose.runtime:runtime-saveable")
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
 }
