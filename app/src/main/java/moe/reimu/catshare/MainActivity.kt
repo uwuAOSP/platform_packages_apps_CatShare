@@ -27,37 +27,35 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,7 +66,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -79,6 +76,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlin.random.Random
 import moe.reimu.catshare.models.DiscoveredDevice
 import moe.reimu.catshare.models.FileInfo
 import moe.reimu.catshare.models.TaskInfo
@@ -89,13 +87,15 @@ import moe.reimu.catshare.ui.theme.CatShareTheme
 import moe.reimu.catshare.utils.INTERNAL_BROADCAST_PERMISSION
 import moe.reimu.catshare.utils.ServiceState
 import moe.reimu.catshare.utils.registerInternalBroadcastReceiver
+import org.uwuaosp.compose.widget.expressive.SettingsActionButton
+import org.uwuaosp.compose.widget.expressive.SettingsButtonSize
+import org.uwuaosp.compose.widget.expressive.SettingsButtonStyle
 import org.uwuaosp.compose.widget.preference.PreferenceRow
 import org.uwuaosp.compose.widget.preference.SettingsSection
 import org.uwuaosp.compose.widget.preference.SwitchPreferenceRow
 import org.uwuaosp.compose.widget.scaffold.SettingsScaffold
 import org.uwuaosp.compose.widget.scaffold.SettingsToolbarActionButton
 import org.uwuaosp.compose.widget.ui.SettingsHomepageIcon
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -402,52 +402,27 @@ private enum class ReceiveCardPhase {
     Failed,
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DevicePickerSheet(
     visible: Boolean,
     onDismiss: () -> Unit,
     onDeviceSelected: (DiscoveredDevice) -> Unit,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(180)),
-        exit = fadeOut(tween(160)),
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.38f))
-                    .clickable(onClick = onDismiss),
+    if (!visible) return
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                stringResource(R.string.choose_device),
+                style = MaterialTheme.typography.headlineSmall,
             )
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.82f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 22.dp)
-                        .padding(WindowInsets.navigationBars.asPaddingValues()),
-                ) {
-                    Text(
-                        text = stringResource(R.string.choose_device),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(18.dp))
-                    DevicePickerContent(
-                        onDeviceSelected = onDeviceSelected,
-                    )
-                }
-            }
+            DevicePickerContent(onDeviceSelected = onDeviceSelected)
         }
     }
 }
@@ -537,17 +512,15 @@ private data class SendCardState(
     val processedSize: Long,
 ) {
     val progress: Float?
-        get() = if (totalSize > 0L) {
-            (processedSize.toFloat() / totalSize.toFloat()).coerceIn(0f, 1f)
-        } else {
-            null
-        }
+        get() =
+            if (totalSize > 0L) {
+                (processedSize.toFloat() / totalSize.toFloat()).coerceIn(0f, 1f)
+            } else {
+                null
+            }
 
     companion object {
-        fun updateList(
-            intent: Intent,
-            current: List<SendCardState>,
-        ): List<SendCardState> {
+        fun updateList(intent: Intent, current: List<SendCardState>): List<SendCardState> {
             val taskId = intent.getIntExtra(P2pSenderService.EXTRA_SEND_CARD_TASK_ID, -1)
             val previous = current.firstOrNull { it.taskId == taskId } ?: current.firstOrNull()
             val state = fromIntent(intent, previous) ?: return current
@@ -556,9 +529,7 @@ private data class SendCardState(
         }
 
         private fun fromIntent(intent: Intent, previous: SendCardState?): SendCardState? {
-            return when (
-                intent.getStringExtra(P2pSenderService.EXTRA_SEND_CARD_STATE)
-            ) {
+            return when (intent.getStringExtra(P2pSenderService.EXTRA_SEND_CARD_STATE)) {
                 P2pSenderService.SEND_CARD_STATE_PREPARING -> SendCardPhase.Preparing
                 P2pSenderService.SEND_CARD_STATE_CONNECTING -> SendCardPhase.Connecting
                 P2pSenderService.SEND_CARD_STATE_SENDING -> SendCardPhase.Sending
@@ -569,24 +540,27 @@ private data class SendCardState(
                 SendCardState(
                     phase = phase,
                     taskId = intent.getIntExtra(P2pSenderService.EXTRA_SEND_CARD_TASK_ID, -1),
-                    targetName = intent.getStringExtra(
-                        P2pSenderService.EXTRA_SEND_CARD_TARGET_NAME
-                    ) ?: previous?.targetName.orEmpty(),
-                    fileName = intent.getStringExtra(
-                        P2pSenderService.EXTRA_SEND_CARD_FILE_NAME
-                    ) ?: previous?.fileName.orEmpty(),
-                    fileCount = intent.getIntExtra(
-                        P2pSenderService.EXTRA_SEND_CARD_FILE_COUNT,
-                        previous?.fileCount ?: 0,
-                    ),
-                    totalSize = intent.getLongExtra(
-                        P2pSenderService.EXTRA_SEND_CARD_TOTAL_SIZE,
-                        previous?.totalSize ?: 0L,
-                    ),
-                    processedSize = intent.getLongExtra(
-                        P2pSenderService.EXTRA_SEND_CARD_PROCESSED_SIZE,
-                        previous?.processedSize ?: 0L,
-                    ),
+                    targetName =
+                        intent.getStringExtra(P2pSenderService.EXTRA_SEND_CARD_TARGET_NAME)
+                            ?: previous?.targetName.orEmpty(),
+                    fileName =
+                        intent.getStringExtra(P2pSenderService.EXTRA_SEND_CARD_FILE_NAME)
+                            ?: previous?.fileName.orEmpty(),
+                    fileCount =
+                        intent.getIntExtra(
+                            P2pSenderService.EXTRA_SEND_CARD_FILE_COUNT,
+                            previous?.fileCount ?: 0,
+                        ),
+                    totalSize =
+                        intent.getLongExtra(
+                            P2pSenderService.EXTRA_SEND_CARD_TOTAL_SIZE,
+                            previous?.totalSize ?: 0L,
+                        ),
+                    processedSize =
+                        intent.getLongExtra(
+                            P2pSenderService.EXTRA_SEND_CARD_PROCESSED_SIZE,
+                            previous?.processedSize ?: 0L,
+                        ),
                 )
             }
         }
@@ -609,29 +583,25 @@ private data class ReceiveCardState(
     val previewMimeType: String?,
 ) {
     val progress: Float?
-        get() = if (totalSize > 0L) {
-            (processedSize.toFloat() / totalSize.toFloat()).coerceIn(0f, 1f)
-        } else {
-            null
-        }
+        get() =
+            if (totalSize > 0L) {
+                (processedSize.toFloat() / totalSize.toFloat()).coerceIn(0f, 1f)
+            } else {
+                null
+            }
 
     companion object {
-        fun updateList(
-            intent: Intent,
-            current: List<ReceiveCardState>,
-        ): List<ReceiveCardState> {
+        fun updateList(intent: Intent, current: List<ReceiveCardState>): List<ReceiveCardState> {
             val taskId = intent.getIntExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_TASK_ID, -1)
             val previous = current.firstOrNull { it.taskId == taskId } ?: current.firstOrNull()
-            val state = fromIntent(intent, previous)
-                ?: return current.filterNot { it.phase.isTransient }
+            val state =
+                fromIntent(intent, previous) ?: return current.filterNot { it.phase.isTransient }
             val next = current.filterNot { it.taskId == state.taskId }
             return listOf(state) + next
         }
 
         private fun fromIntent(intent: Intent, previous: ReceiveCardState?): ReceiveCardState? {
-            return when (
-                intent.getStringExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_STATE)
-            ) {
+            return when (intent.getStringExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_STATE)) {
                 P2pReceiverService.RECEIVE_CARD_STATE_ASKING -> ReceiveCardPhase.Asking
                 P2pReceiverService.RECEIVE_CARD_STATE_RECEIVING -> ReceiveCardPhase.Receiving
                 P2pReceiverService.RECEIVE_CARD_STATE_COMPLETED -> ReceiveCardPhase.Completed
@@ -641,37 +611,42 @@ private data class ReceiveCardState(
                 ReceiveCardState(
                     phase = phase,
                     taskId = intent.getIntExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_TASK_ID, -1),
-                    senderName = intent.getStringExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_SENDER_NAME
-                    ) ?: previous?.senderName.orEmpty(),
-                    fileName = intent.getStringExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_FILE_NAME
-                    ) ?: previous?.fileName.orEmpty(),
-                    fileCount = intent.getIntExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_FILE_COUNT,
-                        previous?.fileCount ?: 0,
-                    ),
-                    totalSize = intent.getLongExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_TOTAL_SIZE,
-                        previous?.totalSize ?: 0L,
-                    ),
-                    processedSize = intent.getLongExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_PROCESSED_SIZE,
-                        previous?.processedSize ?: 0L,
-                    ),
-                    isText = intent.getBooleanExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_IS_TEXT,
-                        previous?.isText ?: false,
-                    ),
-                    previewText = intent.getStringExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_PREVIEW_TEXT
-                    ) ?: previous?.previewText,
-                    previewUri = intent.getStringExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_PREVIEW_URI
-                    ) ?: previous?.previewUri,
-                    previewMimeType = intent.getStringExtra(
-                        P2pReceiverService.EXTRA_RECEIVE_CARD_PREVIEW_MIME_TYPE
-                    ) ?: previous?.previewMimeType,
+                    senderName =
+                        intent.getStringExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_SENDER_NAME)
+                            ?: previous?.senderName.orEmpty(),
+                    fileName =
+                        intent.getStringExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_FILE_NAME)
+                            ?: previous?.fileName.orEmpty(),
+                    fileCount =
+                        intent.getIntExtra(
+                            P2pReceiverService.EXTRA_RECEIVE_CARD_FILE_COUNT,
+                            previous?.fileCount ?: 0,
+                        ),
+                    totalSize =
+                        intent.getLongExtra(
+                            P2pReceiverService.EXTRA_RECEIVE_CARD_TOTAL_SIZE,
+                            previous?.totalSize ?: 0L,
+                        ),
+                    processedSize =
+                        intent.getLongExtra(
+                            P2pReceiverService.EXTRA_RECEIVE_CARD_PROCESSED_SIZE,
+                            previous?.processedSize ?: 0L,
+                        ),
+                    isText =
+                        intent.getBooleanExtra(
+                            P2pReceiverService.EXTRA_RECEIVE_CARD_IS_TEXT,
+                            previous?.isText ?: false,
+                        ),
+                    previewText =
+                        intent.getStringExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_PREVIEW_TEXT)
+                            ?: previous?.previewText,
+                    previewUri =
+                        intent.getStringExtra(P2pReceiverService.EXTRA_RECEIVE_CARD_PREVIEW_URI)
+                            ?: previous?.previewUri,
+                    previewMimeType =
+                        intent.getStringExtra(
+                            P2pReceiverService.EXTRA_RECEIVE_CARD_PREVIEW_MIME_TYPE
+                        ) ?: previous?.previewMimeType,
                 )
             }
         }
@@ -681,7 +656,9 @@ private data class ReceiveCardState(
 private val ReceiveCardPhase.isTransient: Boolean
     get() = this == ReceiveCardPhase.Asking || this == ReceiveCardPhase.Receiving
 
-private fun List<ReceiveCardState>.withoutReceiveTask(taskId: Int) = filterNot { it.taskId == taskId }
+private fun List<ReceiveCardState>.withoutReceiveTask(taskId: Int) = filterNot {
+    it.taskId == taskId
+}
 
 @Composable
 private fun SendTransferCard(
@@ -765,42 +742,27 @@ private fun SendCardIcon(phase: SendCardPhase) {
 }
 
 @Composable
-private fun SendCardProgress(
-    state: SendCardState,
-    onCancel: () -> Unit,
-) {
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun SendCardProgress(state: SendCardState, onCancel: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val progress = if (state.phase == SendCardPhase.Sending) state.progress else null
         if (progress == null) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
         } else {
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            LinearWavyProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = sendCardProgressText(state),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
-            OutlinedButton(
+            SettingsActionButton(
+                label = stringResource(android.R.string.cancel),
                 onClick = onCancel,
-                shape = RoundedCornerShape(22.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ),
-            ) {
-                Text(
-                    text = stringResource(android.R.string.cancel),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+                style = SettingsButtonStyle.Outlined,
+            )
         }
     }
 }
@@ -977,112 +939,61 @@ private fun ReceiveCardIcon(phase: ReceiveCardPhase) {
 }
 
 @Composable
-private fun ReceiveCardDecisionButtons(
-    onReject: () -> Unit,
-    onAccept: () -> Unit,
-) {
+private fun ReceiveCardDecisionButtons(onReject: () -> Unit, onAccept: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.End),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
     ) {
-        OutlinedButton(
+        SettingsActionButton(
+            label = stringResource(R.string.reject),
             onClick = onReject,
-            modifier = Modifier
-                .heightIn(min = 52.dp)
-                .width(132.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-            ),
-        ) {
-            Text(
-                text = stringResource(R.string.reject),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Button(
+            style = SettingsButtonStyle.Outlined,
+            modifier = Modifier.weight(1f),
+            size = SettingsButtonSize.Medium,
+        )
+        SettingsActionButton(
+            label = stringResource(R.string.accept),
             onClick = onAccept,
-            modifier = Modifier
-                .heightIn(min = 52.dp)
-                .width(132.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        ) {
-            Text(
-                text = stringResource(R.string.accept),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+            style = SettingsButtonStyle.Filled,
+            modifier = Modifier.weight(1f),
+            size = SettingsButtonSize.Medium,
+        )
     }
 }
 
 @Composable
 private fun ReceiveCardCloseButton(onClose: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-    ) {
-        OutlinedButton(
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        SettingsActionButton(
+            label = stringResource(R.string.close),
             onClick = onClose,
-            modifier = Modifier
-                .heightIn(min = 52.dp)
-                .width(132.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-            ),
-        ) {
-            Text(
-                text = stringResource(R.string.close),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+            style = SettingsButtonStyle.Outlined,
+        )
     }
 }
 
 @Composable
-private fun ReceiveCardProgress(
-    state: ReceiveCardState,
-    onCancel: () -> Unit,
-) {
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun ReceiveCardProgress(state: ReceiveCardState, onCancel: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val progress = state.progress
         if (progress == null) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
         } else {
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            LinearWavyProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = receiveCardProgressText(state),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
-            OutlinedButton(
+            SettingsActionButton(
+                label = stringResource(android.R.string.cancel),
                 onClick = onCancel,
-                shape = RoundedCornerShape(22.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ),
-            ) {
-                Text(
-                    text = stringResource(android.R.string.cancel),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+                style = SettingsButtonStyle.Outlined,
+            )
         }
     }
 }

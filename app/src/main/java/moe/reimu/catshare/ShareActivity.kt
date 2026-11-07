@@ -7,7 +7,6 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.net.wifi.WifiManager
@@ -23,6 +22,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,9 +33,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +45,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.lifecycle.compose.LifecycleStartEffect
+import java.nio.ByteBuffer
+import kotlin.random.Random
 import moe.reimu.catshare.models.DiscoveredDevice
 import moe.reimu.catshare.models.FileInfo
 import moe.reimu.catshare.models.TaskInfo
@@ -58,8 +57,8 @@ import moe.reimu.catshare.utils.BleUtils
 import moe.reimu.catshare.utils.DeviceUtils
 import moe.reimu.catshare.utils.NotificationUtils
 import moe.reimu.catshare.utils.TAG
-import java.nio.ByteBuffer
-import kotlin.random.Random
+import org.uwuaosp.compose.widget.scaffold.SettingsAppBarScaffold
+import org.uwuaosp.compose.widget.ui.SettingsContent
 
 class ShareActivity : ComponentActivity() {
     private lateinit var bluetoothManager: BluetoothManager
@@ -157,57 +156,53 @@ fun ShareActivityContent(files: List<FileInfo>) {
     val discoveredDevices = deviceScanner()
 
     val listState = rememberLazyListState()
-    val iconMod = Modifier
-        .size(48.dp)
-        .padding(end = 16.dp)
+    val iconMod = Modifier.size(48.dp).padding(end = 16.dp)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text(text = stringResource(R.string.choose_recipient)) })
-        }
+    SettingsAppBarScaffold(
+        title = stringResource(R.string.choose_recipient),
+        showBackButton = true,
+        onNavigateUp = { (context as? ComponentActivity)?.finish() },
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding),
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-        ) {
-            if (discoveredDevices.isEmpty()) {
-                item {
-                    Text(stringResource(R.string.scanning_desc))
-                }
-            } else {
-                items(discoveredDevices, key = { it.id }) {
-                    DefaultCard(onClick = {
-                        val task = TaskInfo(
-                            id = Random.nextInt(),
-                            device = it,
-                            files = files
-                        )
-                        P2pSenderService.startTaskChecked(context, task)
-                        (context as? ComponentActivity)?.finish()
-                    }) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+        SettingsContent {
+            LazyColumn(
+                modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+            ) {
+                if (discoveredDevices.isEmpty()) {
+                    item { Text(stringResource(R.string.scanning_desc)) }
+                } else {
+                    items(discoveredDevices, key = { it.id }) {
+                        DefaultCard(
+                            onClick = {
+                                val task =
+                                    TaskInfo(id = Random.nextInt(), device = it, files = files)
+                                P2pSenderService.startTaskChecked(context, task)
+                                (context as? ComponentActivity)?.finish()
+                            }
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.AccountCircle,
-                                contentDescription = null,
-                                modifier = iconMod
-                            )
-                            Column {
-                                Text(
-                                    text = if (BuildConfig.DEBUG) {
-                                        "${it.name} (${it.id}, ${it.device.address})"
-                                    } else {
-                                        it.name
-                                    },
-                                    style = MaterialTheme.typography.titleMedium,
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AccountCircle,
+                                    contentDescription = null,
+                                    modifier = iconMod,
                                 )
-                                Text(
-                                    text = it.brand ?: stringResource(R.string.unknown)
-                                )
+                                Column {
+                                    Text(
+                                        text =
+                                            if (BuildConfig.DEBUG) {
+                                                "${it.name} (${it.id}, ${it.device.address})"
+                                            } else {
+                                                it.name
+                                            },
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(text = it.brand ?: stringResource(R.string.unknown))
+                                }
                             }
                         }
                     }
